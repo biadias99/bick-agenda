@@ -58,13 +58,12 @@ void cria_lista(no *agenda) {
 }
 
 void zera_lista(no *agenda){
-	no p = *agenda;
 	no q;
-	while(p != NULL){
-		q = p;
+	while(*agenda != NULL){
+		q = *agenda;
+		*agenda = (*agenda)->prox;
 		free(q);
 		q = NULL;
-		p = p->prox;
 	}
 }
 
@@ -262,8 +261,7 @@ void insere_compromisso(no *agenda){
 		printf("\n\tInserir nova data? (S/N): ");
 		do {
 			fflush(stdin);
-			scanf("%c", &resp);
-			resp = toupper(resp);	
+			resp = toupper(getch());	
 		} while(resp != 'S' && resp != 'N');		
 	} while(resp == 'S');
 	menu(&q);
@@ -390,6 +388,123 @@ void le_disco(no agenda){
 	menu(&agenda);
 }
 
+int remove_data(no *agenda, d data) {
+	no p = *agenda;
+	int verifica = 0;
+	if((*agenda)->prox == NULL) {
+		if(retorna_data(data, p->data) == 2) {
+			free(p);
+			*agenda = NULL;
+			return 1;
+		}
+		else {
+			printf("\tData nao existente.\n");
+			return 0;
+		}
+	}
+	
+	while(p != NULL) {
+		
+		if(retorna_data(data, (*agenda)->data) == 2) {
+			*agenda = (*agenda)->prox;
+			free(p);
+			p = *agenda;
+			verifica = 1;
+		}
+		else {
+			no q;
+			if(retorna_data(data, p->data) == 2) {
+				q->prox = p->prox;
+				free(p);
+				p = q;
+				verifica = 1;
+			}
+			
+			if(p->prox != NULL && retorna_data(data, p->prox->data) != 2) {
+				if(verifica == 1) {
+					return 1;
+				} 
+			}
+			
+			if(p->prox == NULL && verifica == 1) 
+				return 1;
+			q = p;
+			p = p->prox;
+		}
+	}
+	
+	if(p == NULL && verifica != 1) {
+		printf("\tData nao existente.\n");
+		return 0;
+	}
+	
+	return 1;
+}
+
+void remove_compromisso(no *agenda) {
+	system("cls");
+	moldura();
+	showCursor();
+	int tecla;
+	char resp;
+	d data;
+	no q = *agenda;
+	
+	if(q == NULL) {
+			gotoxy(45,2);printf("BICK AGENDA - REMOVE COMPROMISSOS\n\t");
+			printf("\n\tAgenda vazia, que tal adicionar algo?\n");
+	}
+	else {
+		do {
+			system("cls");
+			moldura();
+			gotoxy(45,2);printf("BICK AGENDA - REMOVE COMPROMISSOS\n\t");
+			
+			printf("--- Data ---\n\t");
+			printf("Digite a data a ser removida:\n");
+			do {
+				printf("\tDia: ");
+				scanf("%d", &data.dia);	
+			} while(data.dia <0 || data.dia > 31);	
+			do {
+				printf("\tMes: ");
+				scanf("%d", &data.mes);	
+			} while(data.mes < 1 || data.mes > 12 || (data.mes == 2 && data.dia > 29));	
+			do {
+				printf("\tAno: ");
+				scanf("%d", &data.ano);	
+			} while(data.ano < 0 || data.ano > 2050);
+			
+			if(remove_data(&q, data) == 1) {
+				printf("\tData removida com sucesso.");
+			}
+			else {
+				printf("\tData nao removida com sucesso.");
+			}
+			if(q == NULL) {
+				printf("\n\tParece que sua agenda ficou vazia, nao eh mesmo? Insira mais coisas nela!");
+				break;
+			}
+			printf("\n\tRemover outra data? (S/N): ");
+			do {
+				fflush(stdin);
+				resp = toupper(getch());	
+			} while(resp != 'S' && resp != 'N');		
+		} while(resp == 'S');
+	}
+	printf("\n\n\t<ESC> Voltar ao menu principal.");
+
+	tecla = getch();
+	
+	while(tecla!=27){
+		tecla = getch(); 
+	}
+	
+	if(tecla == 27){
+		menu(&q);  
+	}     
+}
+
 void menu(no *agenda){
 	system("cls");
 	moldura();
@@ -433,7 +548,7 @@ void menu(no *agenda){
 					insere_compromisso(&q);
 					break;
 				case 2:
-					//remover compromisso
+					remove_compromisso(&q);
 					break;
 				case 4:
 					mostra_lista(q);

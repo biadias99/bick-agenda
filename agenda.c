@@ -57,6 +57,17 @@ void cria_lista(no *agenda) {
 	*agenda = NULL;
 }
 
+void zera_lista(no *agenda){
+	no p = *agenda;
+	no q;
+	while(p != NULL){
+		q = p;
+		free(q);
+		q = NULL;
+		p = p->prox;
+	}
+}
+
 int retorna_data(d data, d agenda) {
 	int data1 = data.ano*10000 + data.mes*100 + data.dia;
 	int data2 = agenda.ano*10000 + agenda.mes*100 + agenda.dia;
@@ -76,10 +87,10 @@ int retorna_horario(h horario, h agenda) {
 	int h1 = horario.hora*60 + horario.minuto;
 	int h2 = agenda.hora*60 + agenda.minuto;
 	
-	if(h1 <= h2) {
+	if(h1 < h2) {
 		return 0;
 	}
-	else if(h1 > h2) {
+	else if(h1 >= h2) {
 		return 1;
 	}
 }
@@ -164,6 +175,50 @@ void mostra_lista(no agenda) {
 		menu(&agenda);
 }
 
+void mostra_lista_palavra(no agenda) {
+	system("cls");
+	moldura();
+	int tecla;
+	char palavra[80];
+	int passou = 0;
+	
+	gotoxy(45,2);printf("BICK AGENDA - CONSULTA POR PALAVRA\n\t");
+	
+	if(agenda == NULL) {
+		printf("\n\tVoce nao tem nenhum compromisso na sua agenda! Que tal adicionar algum?");
+	}
+	else {
+		showCursor();
+		printf("\n\t Por favor, digite a palavra que deseja procurar nos seus compromissos: ");
+		fflush(stdin);
+		gets(palavra);
+		no p = agenda;
+		hideCursor();
+		while(p != NULL) {
+			if(strstr((p->compromisso), palavra) != NULL){ // tem a palavra aqui dentro
+				passou = 1;
+				printf("\n");
+				printf("\t%d/", p->data.dia);
+				printf("%d/", p->data.mes);
+				printf("%d ", p->data.ano);
+				printf("-- %dh%dmin", p->horario.hora, p->horario.minuto);
+				printf(" -- %s", p->compromisso);
+			}
+			p = p->prox;
+		}
+	}
+	if(!passou){
+		printf("\n\t Nao existe nenhum registro com a palavra digitada.");
+	}
+	printf("\n\n\n\t<ESC> Voltar ao menu principal.");
+	tecla = getch();
+	while(tecla!=27){
+		tecla = getch();
+	}
+	if(tecla == 27)
+		menu(&agenda);
+}
+
 void insere_compromisso(no *agenda){
 	showCursor();
 	char resp, compromisso[81];
@@ -182,7 +237,7 @@ void insere_compromisso(no *agenda){
 		do {
 			printf("\tMes: ");
 			scanf("%d", &data.mes);	
-		} while(data.mes < 1 || data.mes > 12);	
+		} while(data.mes < 1 || data.mes > 12 || (data.mes == 2 && data.dia > 29));	
 		do {
 			printf("\tAno: ");
 			scanf("%d", &data.ano);	
@@ -216,11 +271,11 @@ void insere_compromisso(no *agenda){
 
 void sair(){
 	system("cls");
-	gotoxy(40,2);printf("Obrigada por utilizar nosso sistema!\n");
+	gotoxy(40,2);printf("Obrigada por utilizar Bick Agenda!\n");
 	exit(0); // força o fechamento do programa;
 }
 
-void sobre(){
+void sobre(no agenda){
 	int tecla = 32;
 	system("cls");
 	moldura();
@@ -238,7 +293,7 @@ void sobre(){
 	}
 
 	if(tecla == 27)
-		menu();
+		menu(&agenda);
 }
 
 void ajuda(){
@@ -250,22 +305,100 @@ void ajuda(){
 	gotoxy(10,25);printf("Nao esqueca de salvar os seus dados no disco para que nao sejam perdidos!");
 }
 
+void salva_disco(no agenda){
+  system("cls");
+  moldura();
+  hideCursor();
+  FILE *arquivo;
+  int tecla;
+  // Abertura do arquivo
+  gotoxy(55,2);printf("SALVAR NO DISCO - BICK AGENDA");
+  // Leitura dos registros e gravacao
+  if(agenda == NULL) {
+  	printf("\n\n\tVoce nao tem nenhum compromisso na sua agenda! Que tal adicionar algum?");
+  } else {
+  	if ((arquivo = fopen("agenda.txt", "r+w")) == NULL) {
+		 if ((arquivo = fopen("agenda.txt", "w")) == NULL) {
+		      printf ("\nErro da abertura do arquivo.\n\n");
+		      return;
+		 }    
+	} else {
+		fseek (arquivo, 0, SEEK_END); // Arquivo existe e posiciono o ponteiro no final do arquivo
+	}
+  	no p = agenda;
+  	fflush (stdin); // "Limpa" o buffer de entrada - teclado
+	while(p != NULL) {
+		printf("\n");
+		printf("\t%d/", p->data.dia);
+		printf("%d/", p->data.mes);
+		printf("%d ", p->data.ano);
+		printf("-- %dh%dmin", p->horario.hora, p->horario.minuto);
+		printf(" -- %s", p->compromisso);
+		fprintf(arquivo,"%d %d %d %d %d \n %s \n",p->data.dia, p->data.mes,p->data.ano,p->horario.hora,p->horario.minuto, p->compromisso); 
+		p = p->prox;
+	}
+	printf("\n\n\t Dados salvos com sucesso!");
+	zera_lista(&agenda);
+  	fclose (arquivo);
+  }   
+  printf("\n\n\n\t<ESC> Voltar ao menu principal.");
+
+  tecla = getch();
+
+  while(tecla!=27){
+	tecla = getch(); 
+  }
+
+  if(tecla == 27)
+	menu(&agenda);  
+}     
+
+void le_disco(no agenda){
+  FILE *arquivo;
+  int tecla = 32;
+  system("cls");
+  moldura();
+  hideCursor();
+  gotoxy(50,2);printf("ARQUIVOS DO DISCO - BICK AGENDA");
+  // Abertura do arquivo
+  if ((arquivo = fopen("agenda.txt", "r")) == NULL) {
+    printf ("\n\n\tNao existe nenhum dado armazenado no disco. Que tal adicionar?\n\n");
+  } else {
+  	  int dia, mes, ano, hora, minuto;
+  	  char compromisso[81];
+	  // Leitura dos registros 
+	  printf("\n");
+	  while (fscanf (arquivo,"%d %d %d %d %d ",&dia, &mes, &ano, &hora, &minuto) != EOF) {
+	  		fgets(compromisso,80,arquivo);
+			printf("\t%d/", dia);
+			printf("%d/", mes);
+			printf("%d ", ano);
+			printf("-- %dh%dmin", hora, minuto);
+			printf(" -- %s", compromisso);
+	  }
+	  fclose (arquivo);
+  }
+  printf("\n\n\n\t<ESC> Voltar ao menu principal.");
+
+  tecla = getch();
+
+  while(tecla!=27){
+	tecla = getch(); 
+  }
+
+  if(tecla == 27)
+	menu(&agenda);
+}
+
 void menu(no *agenda){
 	system("cls");
 	moldura();
 	int primeiraVez = 1;
-	FILE *arquivo;
 	int tecla;
 	int cont = 0;
 	no q = *agenda;
 	
 	hideCursor();
-	
-	// Verifica se o usuário já tem compromissos cadastrados
-	if ((arquivo = fopen("agenda.txt", "rb")) != NULL) {
-		primeiraVez = 0;
-	}
-	fclose(arquivo);
 				
 	gotoxy(55,2);printf("BICK AGENDA");
 	gotoxy(8,4);printf("%c",254);
@@ -300,12 +433,22 @@ void menu(no *agenda){
 					insere_compromisso(&q);
 					break;
 				case 2:
+					//remover compromisso
 					break;
 				case 4:
 					mostra_lista(q);
 					break;
+				case 6:
+					mostra_lista_palavra(q);
+					break;
+				case 8:
+					salva_disco(q);
+					break;
+				case 10:
+					le_disco(q);
+					break;
 				case 12:
-					sobre();
+					sobre(q);
 					break;
 			}
 		}

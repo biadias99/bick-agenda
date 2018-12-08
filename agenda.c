@@ -21,14 +21,10 @@ typedef struct {
 
 struct reg {
 	d data;
-	//h horario;
-	//char compromisso[81];
+	h horario;
+	char compromisso[81];
 	no prox;
 };
-
-void cria_lista(no *agenda) {
-	*agenda = NULL;
-}
 
 void hideCursor();
 void showCursor();
@@ -55,6 +51,167 @@ void showCursor(){
 
 void gotoxy(int x,int y){
 	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE),(COORD){x,y}); //posiciona cursor na tela
+}
+
+void cria_lista(no *agenda) {
+	*agenda = NULL;
+}
+
+int retorna_data(d data, d agenda) {
+	int data1 = data.ano*10000 + data.mes*100 + data.dia;
+	int data2 = agenda.ano*10000 + agenda.mes*100 + agenda.dia;
+	
+	if(data1 < data2) {
+	    return 0;
+	}
+	else if(data1 > data2) {
+	        return 1;
+	}
+	else if(data1 == data2) {
+		return 2;
+	}
+}
+
+int retorna_horario(h horario, h agenda) {
+	int h1 = horario.hora*60 + horario.minuto;
+	int h2 = agenda.hora*60 + agenda.minuto;
+	
+	if(h1 <= h2) {
+		return 0;
+	}
+	else if(h1 > h2) {
+		return 1;
+	}
+}
+
+void insere_data(no *agenda, char compromisso[], d data, h horario) {
+	no p = (no) malloc (sizeof(struct reg));
+	p->data = data;
+	p->horario = horario;
+	fflush(stdin);
+	strcpy(p->compromisso, compromisso);
+	
+	if(*agenda == NULL) { //lista vazia
+		p->prox = *agenda;
+		*agenda = p;
+		return;
+	}
+	else { 
+		if(retorna_data(data, (*agenda)->data) == 0) { //data inserida < data da agenda
+			p->prox = *agenda;
+			*agenda = p;
+			return;
+		}
+		no q = *agenda, r;
+		while(q != NULL) {
+			if(retorna_data(data, q->data) == 1) {
+				r = q;
+				q = q->prox;
+			}
+			else {
+				if(retorna_data(data, q->data) == 2) {
+					if(retorna_horario(horario, q->horario) == 1) {
+						r = q;
+						q = q->prox;
+						
+					}	
+				}
+				if(q == NULL || retorna_horario(horario, q->horario) == 0) {
+					r->prox = p;
+					p->prox = q;
+					return;
+				}
+			}
+			if(q == NULL || retorna_data(data, q->data) == 0) {
+				r->prox = p;
+				p->prox = q;
+				return;
+			}
+
+		}
+	}
+}
+
+void mostra_lista(no agenda) {
+	system("cls");
+	moldura();
+	hideCursor();
+	int tecla;
+	
+	gotoxy(45,2);printf("BICK AGENDA - CONSULTA\n\t");
+	
+	if(agenda == NULL) {
+		printf("\n\tVoce nao tem nenhum compromisso na sua agenda! Que tal adicionar algum?");
+	}
+	else {
+		no p = agenda;
+		while(p != NULL) {
+			printf("\n");
+			printf("\t%d/", p->data.dia);
+			printf("%d/", p->data.mes);
+			printf("%d ", p->data.ano);
+			printf("-- %dh%dmin", p->horario.hora, p->horario.minuto);
+			printf(" -- %s", p->compromisso);
+			p = p->prox;
+		}
+	}
+	printf("\n\n\n\t<ESC> Voltar ao menu principal.");
+	tecla = getch();
+	while(tecla!=27){
+		tecla = getch();
+	}
+	if(tecla == 27)
+		menu(&agenda);
+}
+
+void insere_compromisso(no *agenda){
+	showCursor();
+	char resp, compromisso[81];
+	d data;
+	h horario;
+	no q = *agenda;
+	do {
+		system("cls");
+		moldura();
+		gotoxy(45,2);printf("BICK AGENDA - INSERE COMPROMISSO\n\t");
+		printf("--- Data ---\n");
+		do {
+			printf("\tDia: ");
+			scanf("%d", &data.dia);	
+		} while(data.dia <0 || data.dia > 31);	
+		do {
+			printf("\tMes: ");
+			scanf("%d", &data.mes);	
+		} while(data.mes < 1 || data.mes > 12);	
+		do {
+			printf("\tAno: ");
+			scanf("%d", &data.ano);	
+		} while(data.ano < 0 || data.ano > 2050);
+		printf("\n\t--- Horario ---\n");
+		do {
+			printf("\tHora: ");
+			scanf("%d", &horario.hora);	
+		} while(horario.hora < 0 || horario.hora > 23);
+		do {
+			printf("\tMinuto: ");
+			scanf("%d", &horario.minuto);	
+		} while(horario.minuto < 0 || horario.minuto > 59);
+		printf("\n\t--- Compromisso ---\n");
+		do {
+			printf("\tDigite o compromisso: ");
+			fflush(stdin);
+			gets(compromisso);	
+		} while(strlen(compromisso) > 80 || strlen(compromisso) == 0);
+		
+		insere_data(&q, compromisso, data, horario);
+		printf("\n\tInserir nova data? (S/N): ");
+		do {
+			fflush(stdin);
+			scanf("%c", &resp);
+			resp = toupper(resp);	
+		} while(resp != 'S' && resp != 'N');		
+	} while(resp == 'S');
+	menu(&q);
 }
 
 void sair(){
@@ -93,15 +250,15 @@ void ajuda(){
 	gotoxy(10,25);printf("Nao esqueca de salvar os seus dados no disco para que nao sejam perdidos!");
 }
 
-void menu(){
+void menu(no *agenda){
 	system("cls");
 	moldura();
 	int primeiraVez = 1;
 	FILE *arquivo;
 	int tecla;
 	int cont = 0;
-	int cheque;
-
+	no q = *agenda;
+	
 	hideCursor();
 	
 	// Verifica se o usuário já tem compromissos cadastrados
@@ -140,12 +297,12 @@ void menu(){
 		if(tecla == 13){
 			switch(cont){
 				case 0:
-					cheque = 0;
-					// calculaNotasEMoedas(cheque);
+					insere_compromisso(&q);
 					break;
 				case 2:
-					cheque = 1;
-					// calculaNotasEMoedas(cheque);
+					break;
+				case 4:
+					mostra_lista(q);
 					break;
 				case 12:
 					sobre();
@@ -199,10 +356,12 @@ void menuBoasVindas(){
 	int aux = 1;
 	int tent = 1;
 	int i;
+	no agenda;
+	cria_lista(&agenda);
 	
 	moldura();
 	gotoxy(50,10);printf("Bem-vindo a Bick Agenda");
-	gotoxy(25,13);printf("Na Bick Agenda, voce pode cadastrar e visualizar todos os seus compromissos.");
+	gotoxy(25,13);printf("Na Bick Agenda, voce pode cadastrar, visualizar e remover seus compromissos.");
 	gotoxy(38,14);printf("Para administrar seu tempo, eh so com Bick Agenda!");
 	gotoxy(40,20);printf("Pressione qualquer tecla para continuar...");
 	hideCursor();
@@ -219,7 +378,7 @@ void menuBoasVindas(){
 			}
 			Sleep(1000);
 		}
-		menu();
+		menu(&agenda);
 	}
 }
 
